@@ -4,7 +4,7 @@ Projeto desenvolvido para a atividade de consumo de API pública, focado em uma 
 
 ## 🔗 Links do Projeto
 - **Repositório:** [[Link para este repositório](https://github.com/Everson9/Consumo-de-API)]
-- **Deploy:** [Vercel.com]
+- **Deploy:** [[Vercel.com](https://consumoapi-three.vercel.app/)]
 
 ## 🛠️ Tecnologias Utilizadas
 - **HTML5:** Estrutura semântica.
