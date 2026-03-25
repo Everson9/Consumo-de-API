@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnimeFlux | Explorer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Anime<span>Flux</span></h1>
+        <p>Os melhores títulos por categoria</p>
+    </header>
+
+    <main>
+        <section class="category">
+            <h2>Shounen & Aventura</h2>
+            <div class="row-container">
+                <button class="nav-btn left" onclick="sideScroll('shounenRow', 'left')">&#10094;</button>
+                <div class="row" id="shounenRow">
+                    <p class="loading">Carregando animes...</p>
+                </div>
+                <button class="nav-btn right" onclick="sideScroll('shounenRow', 'right')">&#10095;</button>
+            </div>
+        </section>
+
+        <section class="category">
+            <h2>Romance & Escolar</h2>
+            <div class="row-container">
+                <button class="nav-btn left" onclick="sideScroll('romanceRow', 'left')">&#10094;</button>
+                <div class="row" id="romanceRow"></div>
+                <button class="nav-btn right" onclick="sideScroll('romanceRow', 'right')">&#10095;</button>
+            </div>
+        </section>
+
+        <section class="category">
+            <h2>Fantasia & Isekai</h2>
+            <div class="row-container">
+                <button class="nav-btn left" onclick="sideScroll('fantasyRow', 'left')">&#10094;</button>
+                <div class="row" id="fantasyRow"></div>
+                <button class="nav-btn right" onclick="sideScroll('fantasyRow', 'right')">&#10095;</button>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Atividade Acadêmica &bull; Dados via Jikan API</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

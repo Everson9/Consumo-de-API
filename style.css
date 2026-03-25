@@ -1,0 +1,111 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+    background-color: #0b0f1a;
+    color: #ffffff;
+    overflow-x: hidden;
+    padding-bottom: 50px;
+}
+
+header {
+    padding: 40px 20px;
+    text-align: center;
+}
+
+h1 { font-size: 2rem; margin-bottom: 5px; }
+h1 span { color: #38bdf8; }
+header p { color: #94a3b8; font-size: 0.9rem; }
+
+
+.category { margin-bottom: 40px; }
+.category h2 {
+    padding: 0 25px;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    color: #f1f5f9;
+}
+
+
+.row-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+
+.row {
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;
+    padding: 10px 25px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+.row::-webkit-scrollbar { display: none; }
+
+
+.nav-btn {
+    position: absolute;
+    z-index: 10;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: none;
+    transition: 0.3s;
+}
+
+.nav-btn:hover { background: #38bdf8; transform: scale(1.1); }
+.left { left: 10px; }
+.right { right: 10px; }
+
+/* animasao */
+@keyframes cardAppear {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.anime-card {
+    min-width: 160px;
+    max-width: 160px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    animation: cardAppear 0.6s ease-out forwards;
+}
+
+.anime-card img {
+    width: 100%;
+    height: 230px;
+    object-fit: cover;
+}
+
+.anime-info { padding: 12px; }
+.anime-info h3 {
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.score { color: #38bdf8; font-weight: bold; font-size: 0.8rem; }
+
+footer { text-align: center; color: #475569; font-size: 0.8rem; margin-top: 20px; }
+
+/* Responsividade */
+@media (min-width: 768px) {
+    .nav-btn { display: flex; align-items: center; justify-content: center; }
+    .anime-card { min-width: 180px; max-width: 180px; }
+}
