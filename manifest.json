@@ -1,10 +1,12 @@
 {
   "name": "AnimeFlux Explorer",
   "short_name": "AnimeFlux",
-  "start_url": "index.html",
+  "description": "Explore os melhores animes e assista seus trailers.",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0b0f1a",
   "theme_color": "#38bdf8",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "public/icons/android/mipmap-mdpi/ic_launcher.png",
