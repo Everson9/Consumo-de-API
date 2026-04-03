@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AnimeFlux | Explorer & Trailers</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
     <link rel="icon" href="public/icons/image.ico.png" type="image/png">
+    <meta name="theme-color" content="#0b0f1a">
 </head>
 <body>
     <header>
@@ -47,8 +49,7 @@
     <div id="trailerModal" class="modal">
         <div class="modal-content">
             <span class="close-modal">&times;</span>
-            <div id="trailerContainer">
-                </div>
+            <div id="trailerContainer"></div>
             <div class="modal-info">
                 <h3 id="modalTitle">Título do Anime</h3>
                 <p id="modalSynopsis">Sinopse completa...</p>
@@ -61,5 +62,13 @@
     </footer>
 
     <script src="script.js"></script>
+    <script>
+        // Registro do Service Worker para o PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log("Service Worker registrado!"))
+                .catch(err => console.log("Erro no SW:", err));
+        }
+    </script>
 </body>
 </html>

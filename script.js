@@ -1,56 +1,45 @@
-// Configuração das categorias (IDs de gênero da Jikan API)
+// Configuração das categorias (IDs das fileiras e IDs dos gêneros na Jikan API)
 const categories = [
-    { genres: '1,27', id: 'shounenRow' }, // Adventure, Shounen
-    { genres: '22,23', id: 'romanceRow' }, // Romance, School
-    { genres: '10', id: 'fantasyRow' }    // Fantasy
+    { genres: '1,27', id: 'shounenRow' },
+    { genres: '22,23', id: 'romanceRow' },
+    { genres: '10', id: 'fantasyRow' }
 ];
 
-// Gerenciador do Modal
-const modal = document.getElementById('trailerModal');
-const trailerContainer = document.getElementById('trailerContainer');
-const modalTitle = document.getElementById('modalTitle');
-const modalSynopsis = document.getElementById('modalSynopsis');
-const closeBtn = document.querySelector('.close-modal');
-
-// Inicialização: Carrega as categorias sequencialmente
+// 1. Inicialização ao carregar a página
 async function init() {
     for (const cat of categories) {
         try {
-            // Busca animes bem avaliados do gênero
+            // Busca animes por gênero, ordenados por nota
             const res = await fetch(`https://api.jikan.moe/v4/anime?genres=${cat.genres}&limit=12&order_by=score&sort=desc`);
             const data = await res.json();
             render(data.data, cat.id);
             
-            // Pequeno delay (0.5s) para respeitar o limite de requisições da API gratuita (Rate Limit)
+            // Delay de 500ms entre as chamadas para não dar erro de "Rate Limit" na API
             await new Promise(r => setTimeout(r, 500));
         } catch (err) {
-            console.error(`Erro ao carregar categoria ${cat.id}:`, err);
-            const container = document.getElementById(cat.id);
-            if (container) {
-                container.innerHTML = '<p class="loading">Erro ao carregar dados.</p>';
-            }
+            console.error("Erro ao buscar dados da API:", err);
         }
     }
 }
 
-// Renderiza os cards na linha correspondente
+// 2. Renderiza os cards de anime no HTML
 function render(animes, containerId) {
     const el = document.getElementById(containerId);
     if (!el) return;
-    
-    el.innerHTML = ''; // Limpa o texto de carregando
+    el.innerHTML = ''; 
 
     animes.forEach(anime => {
         const div = document.createElement('div');
         div.className = 'anime-card';
         
-        // Armazena os dados necessários no próprio elemento para usar no modal
-        div.dataset.title = anime.title;
-        div.dataset.synopsis = anime.synopsis || 'Sinopse não disponível.';
-        div.dataset.trailer = anime.trailer?.embed_url || ''; // URL de embed do YT
-
-        // Injeta o clique para abrir o modal
-        div.onclick = () => openModal(div.dataset);
+        // Evento de clique para abrir o modal com os dados do anime
+        div.onclick = () => {
+            openModal({
+                title: anime.title,
+                synopsis: anime.synopsis || 'Sinopse não disponível.',
+                trailer: anime.trailer?.embed_url || null
+            });
+        };
 
         div.innerHTML = `
             <img src="${anime.images.jpg.image_url}" alt="${anime.title}" loading="lazy">
@@ -63,84 +52,55 @@ function render(animes, containerId) {
     });
 }
 
-// Lógica para abrir o Modal e carregar o trailer
-function openModal(data) {
-    // RECURSO DE HARDWARE: Feedback tátil (vibração curta)
-    if (navigator.vibrate) {
-        navigator.vibrate(40); 
+// 3. Função do Modal com Recurso de Hardware (Vibration API)
+function openModal(anime) {
+    const modal = document.getElementById('trailerModal');
+    
+    // STRIKE: Uso de recurso de hardware (Vibração)
+    if ("vibrate" in navigator) {
+        navigator.vibrate(50); // Vibra por 50ms ao clicar
     }
 
-    modalTitle.textContent = data.title;
-    modalSynopsis.textContent = data.synopsis;
-    trailerContainer.innerHTML = ''; // Limpa conteúdo anterior
-
-    if (data.trailer) {
-        const iframe = document.createElement('iframe');
-        // Garante autoplay off e remove controles desnecessários
-        iframe.src = data.trailer.replace('autoplay=1', 'autoplay=0'); 
-        iframe.allow = "accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
-        iframe.allowFullscreen = true;
-        trailerContainer.appendChild(iframe);
+    document.getElementById('modalTitle').innerText = anime.title;
+    document.getElementById('modalSynopsis').innerText = anime.synopsis;
+    
+    const container = document.getElementById('trailerContainer');
+    if (anime.trailer) {
+        // Adiciona o trailer do YouTube se disponível
+        container.innerHTML = `<iframe src="${anime.trailer}" allowfullscreen></iframe>`;
     } else {
-        trailerContainer.innerHTML = `
-            <div class="no-trailer">
-                <p>🎬 Trailer não disponível para este título.</p>
-            </div>
-        `;
+        container.innerHTML = `<div class="no-trailer"><p>Trailer indisponível para este título.</p></div>`;
     }
-
+    
     modal.style.display = 'block';
-    document.body.style.overflow = 'hidden'; // Impede scroll do fundo
 }
 
-// Função para fechar o Modal
-function closeModal() {
-    // RECURSO DE HARDWARE: Vibração bem curta ao fechar
-    if (navigator.vibrate) {
-        navigator.vibrate(20);
-    }
-
+// 4. Fechar o Modal
+document.querySelector('.close-modal').onclick = function() {
+    const modal = document.getElementById('trailerModal');
     modal.style.display = 'none';
-    trailerContainer.innerHTML = ''; // Para o som do vídeo ao fechar
-    document.body.style.overflow = 'auto'; // Reativa scroll do fundo
-}
-
-// Eventos de fechamento
-if (closeBtn) closeBtn.onclick = closeModal;
-
-window.onclick = (event) => { 
-    if (event.target == modal) closeModal(); 
+    document.getElementById('trailerContainer').innerHTML = ''; // Para o vídeo ao fechar
 };
 
-document.onkeydown = (e) => { 
-    if (e.key === 'Escape') closeModal(); 
+// Fecha se clicar fora da caixa branca
+window.onclick = function(event) {
+    const modal = document.getElementById('trailerModal');
+    if (event.target == modal) {
+        modal.style.display = 'none';
+        document.getElementById('trailerContainer').innerHTML = '';
+    }
 };
 
-// Lógica das setas laterais (Desktop)
+// 5. Função das setas de navegação (Scroll Horizontal)
 function sideScroll(elementId, direction) {
     const el = document.getElementById(elementId);
-    if (!el) return;
-
-    // RECURSO DE HARDWARE: Vibração leve ao navegar via botão
-    if (navigator.vibrate) {
-        navigator.vibrate(10);
+    const scrollAmount = 300;
+    if (direction === 'left') {
+        el.scrollLeft -= scrollAmount;
+    } else {
+        el.scrollLeft += scrollAmount;
     }
-
-    const scrollAmount = 350;
-    el.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-    });
 }
 
-// Registro do Service Worker para PWA
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-            .then(reg => console.log('SW registrado com sucesso!', reg))
-            .catch(err => console.warn('Erro ao registrar SW:', err));
-    });
-}
-
-// Inicia tudo ao carregar a janela
+// Inicia o projeto
 window.onload = init;
