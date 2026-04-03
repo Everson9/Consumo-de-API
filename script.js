@@ -21,11 +21,14 @@ async function init() {
             const data = await res.json();
             render(data.data, cat.id);
             
-            // Pequeno delay (0.5s) para respeitar o limite de requisições da API gratuita
+            // Pequeno delay (0.5s) para respeitar o limite de requisições da API gratuita (Rate Limit)
             await new Promise(r => setTimeout(r, 500));
         } catch (err) {
             console.error(`Erro ao carregar categoria ${cat.id}:`, err);
-            document.getElementById(cat.id).innerHTML = '<p class="loading">Erro ao carregar dados.</p>';
+            const container = document.getElementById(cat.id);
+            if (container) {
+                container.innerHTML = '<p class="loading">Erro ao carregar dados.</p>';
+            }
         }
     }
 }
@@ -33,6 +36,8 @@ async function init() {
 // Renderiza os cards na linha correspondente
 function render(animes, containerId) {
     const el = document.getElementById(containerId);
+    if (!el) return;
+    
     el.innerHTML = ''; // Limpa o texto de carregando
 
     animes.forEach(anime => {
@@ -60,19 +65,23 @@ function render(animes, containerId) {
 
 // Lógica para abrir o Modal e carregar o trailer
 function openModal(data) {
+    // RECURSO DE HARDWARE: Feedback tátil (vibração curta)
+    if (navigator.vibrate) {
+        navigator.vibrate(40); 
+    }
+
     modalTitle.textContent = data.title;
     modalSynopsis.textContent = data.synopsis;
     trailerContainer.innerHTML = ''; // Limpa conteúdo anterior
 
     if (data.trailer) {
-        // Cria o iframe do YouTube (autoplay desativado para não assustar o usuário)
         const iframe = document.createElement('iframe');
-        iframe.src = data.trailer.replace('autoplay=1', 'autoplay=0'); // Garante autoplay off
+        // Garante autoplay off e remove controles desnecessários
+        iframe.src = data.trailer.replace('autoplay=1', 'autoplay=0'); 
         iframe.allow = "accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
         iframe.allowFullscreen = true;
         trailerContainer.appendChild(iframe);
     } else {
-        // Mensagem caso não exista trailer cadastrado
         trailerContainer.innerHTML = `
             <div class="no-trailer">
                 <p>🎬 Trailer não disponível para este título.</p>
@@ -86,21 +95,51 @@ function openModal(data) {
 
 // Função para fechar o Modal
 function closeModal() {
+    // RECURSO DE HARDWARE: Vibração bem curta ao fechar
+    if (navigator.vibrate) {
+        navigator.vibrate(20);
+    }
+
     modal.style.display = 'none';
     trailerContainer.innerHTML = ''; // Para o som do vídeo ao fechar
     document.body.style.overflow = 'auto'; // Reativa scroll do fundo
 }
 
 // Eventos de fechamento
-closeBtn.onclick = closeModal;
-window.onclick = (event) => { if (event.target == modal) closeModal(); }; // Fecha ao clicar fora
-document.onkeydown = (e) => { if (e.key === 'Escape') closeModal(); }; // Fecha com ESC
+if (closeBtn) closeBtn.onclick = closeModal;
+
+window.onclick = (event) => { 
+    if (event.target == modal) closeModal(); 
+};
+
+document.onkeydown = (e) => { 
+    if (e.key === 'Escape') closeModal(); 
+};
 
 // Lógica das setas laterais (Desktop)
 function sideScroll(elementId, direction) {
     const el = document.getElementById(elementId);
+    if (!el) return;
+
+    // RECURSO DE HARDWARE: Vibração leve ao navegar via botão
+    if (navigator.vibrate) {
+        navigator.vibrate(10);
+    }
+
     const scrollAmount = 350;
-    el.scrollLeft += (direction === 'left' ? -scrollAmount : scrollAmount);
+    el.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+    });
+}
+
+// Registro do Service Worker para PWA
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('SW registrado com sucesso!', reg))
+            .catch(err => console.warn('Erro ao registrar SW:', err));
+    });
 }
 
 // Inicia tudo ao carregar a janela
