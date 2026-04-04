@@ -1,5 +1,7 @@
 {
-  "version": 2,
+  "buildCommand": "",
+  "outputDirectory": ".",
+  "framework": null,
   "headers": [
     {
       "source": "/sw.js",
