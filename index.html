@@ -8,17 +8,15 @@
 
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
-
-    <!-- Ícone -->
     <link rel="icon" href="public/icons/android/mipmap-xxxhdpi/ic_launcher.png" type="image/png">
     <link rel="apple-touch-icon" href="public/icons/android/mipmap-xxxhdpi/ic_launcher.png">
 
-    <!-- Open Graph (melhora Lighthouse SEO) -->
+    <!-- Open Graph -->
     <meta property="og:title" content="AnimeFlux | Explorer & Trailers">
     <meta property="og:description" content="Explore os melhores animes e assista trailers.">
     <meta property="og:type" content="website">
 
-    <!-- Google Fonts -->
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -36,10 +34,14 @@
                 <h1>Anime<span>Flux</span></h1>
             </div>
             <p class="tagline">Explore categorias &amp; assista trailers</p>
+            <!-- Botão de notificações -->
+            <button id="notifyBtn" class="notify-btn" aria-label="Ativar notificações de novos animes">
+                🔔 Ativar alertas
+            </button>
         </div>
     </header>
 
-    <!-- ===== CONTEÚDO PRINCIPAL ===== -->
+    <!-- ===== MAIN ===== -->
     <main id="main-content">
 
         <section class="category" aria-label="Shounen e Aventura">
@@ -83,9 +85,9 @@
         </div>
     </div>
 
-    <!-- ===== TOAST (feedback de instalação PWA) ===== -->
+    <!-- ===== TOAST INSTALAÇÃO ===== -->
     <div id="installToast" class="install-toast" aria-live="polite" hidden>
-        <span>📲 Instale o AnimeFlux no seu celular!</span>
+        <span>📲 Instale o AnimeFlux!</span>
         <button id="installBtn">Instalar</button>
         <button class="toast-dismiss" aria-label="Fechar">✕</button>
     </div>
@@ -96,7 +98,6 @@
 
     <script src="script.js"></script>
     <script>
-        // Registro do Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')

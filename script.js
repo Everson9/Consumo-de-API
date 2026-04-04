@@ -2,16 +2,24 @@
 // CONFIGURAÇÃO
 // ==============================
 const categories = [
-    { genres: '1,27', id: 'shounenRow' },
-    { genres: '22,23', id: 'romanceRow' },
-    { genres: '10',   id: 'fantasyRow'  }
+    { genres: '1,27',  id: 'shounenRow', label: 'Shounen & Aventura' },
+    { genres: '22,23', id: 'romanceRow', label: 'Romance & Escolar'  },
+    { genres: '10',    id: 'fantasyRow', label: 'Fantasia & Isekai'  }
 ];
 
-// Wake Lock (mantém tela ligada durante trailer)
-let wakeLock = null;
-
-// Prompt de instalação PWA
+let wakeLock              = null;
 let deferredInstallPrompt = null;
+let notificationTimer     = null;
+
+// Pool de animes para notificações periódicas
+const notificationAnimes = [
+    { title: 'Fullmetal Alchemist: Brotherhood', emoji: '⚗️' },
+    { title: 'Steins;Gate',                      emoji: '⏳' },
+    { title: 'Violet Evergarden',                emoji: '💌' },
+    { title: 'Attack on Titan',                  emoji: '⚔️' },
+    { title: 'Your Lie in April',                emoji: '🎹' },
+    { title: 'Demon Slayer',                     emoji: '🔥' },
+];
 
 // ==============================
 // 1. INICIALIZAÇÃO
@@ -19,35 +27,35 @@ let deferredInstallPrompt = null;
 window.addEventListener('load', () => {
     init();
     setupInstallPrompt();
+    setupNotificationButton();
 });
 
 async function init() {
     for (const cat of categories) {
-        // Mostra skeletons enquanto carrega
         renderSkeletons(cat.id);
-
         try {
             const res = await fetch(
                 `https://api.jikan.moe/v4/anime?genres=${cat.genres}&limit=12&order_by=score&sort=desc`
             );
-
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
             const data = await res.json();
-            render(data.data, cat.id);
-
+            render(data.data, cat.id, cat.label);
         } catch (err) {
-            console.error(`Erro ao buscar categoria ${cat.id}:`, err);
+            console.error(`Erro ao buscar ${cat.id}:`, err);
             renderError(cat.id);
         }
-
-        // Rate limit da Jikan API (máx 3 req/s)
         await new Promise(r => setTimeout(r, 500));
     }
+
+    // Notifica quando tudo carregou
+    notifyIfPermitted(
+        '✅ AnimeFlux atualizado!',
+        'Todos os animes foram carregados. Confira as novidades!'
+    );
 }
 
 // ==============================
-// 2. SKELETONS (Loading)
+// 2. SKELETONS
 // ==============================
 function renderSkeletons(containerId, count = 8) {
     const el = document.getElementById(containerId);
@@ -63,16 +71,14 @@ function renderSkeletons(containerId, count = 8) {
 function renderError(containerId) {
     const el = document.getElementById(containerId);
     if (!el) return;
-    el.innerHTML = `
-        <p style="color: #64748b; font-size: 0.85rem; padding: 20px 0; font-style: italic;">
-            Não foi possível carregar. Verifique sua conexão.
-        </p>`;
+    el.innerHTML = `<p style="color:#64748b;font-size:0.85rem;padding:20px 0;font-style:italic;">
+        Não foi possível carregar. Verifique sua conexão.</p>`;
 }
 
 // ==============================
 // 4. RENDERIZA CARDS
 // ==============================
-function render(animes, containerId) {
+function render(animes, containerId, categoryLabel) {
     const el = document.getElementById(containerId);
     if (!el) return;
     el.innerHTML = '';
@@ -89,25 +95,24 @@ function render(animes, containerId) {
         const imgUrl = anime.images?.jpg?.image_url || '';
         const title  = anime.title || 'Sem título';
 
-        // Cria os elementos sem innerHTML para evitar XSS
-        const img = document.createElement('img');
-        img.src     = imgUrl;
-        img.alt     = title;
-        img.loading = 'lazy';
-        img.width   = 195;
-        img.height  = 280;
-        img.onerror = () => {
-            img.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="195" height="280" fill="%231e293b"><rect width="195" height="280"/><text x="50%" y="50%" fill="%2364748b" text-anchor="middle" font-size="12" dy=".3em">Sem imagem</text></svg>';
+        const img       = document.createElement('img');
+        img.src         = imgUrl;
+        img.alt         = title;
+        img.loading     = 'lazy';
+        img.width       = 195;
+        img.height      = 280;
+        img.onerror     = () => {
+            img.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="195" height="280" fill="%231e293b"><rect width="195" height="280"/><text x="50%" y="50%" fill="%2364748b" text-anchor="middle" font-size="12" dy=".3em">Sem imagem</text></svg>`;
         };
 
-        const info = document.createElement('div');
-        info.className = 'anime-info';
+        const info      = document.createElement('div');
+        info.className  = 'anime-info';
 
-        const scoreEl = document.createElement('span');
-        scoreEl.className = 'score';
+        const scoreEl       = document.createElement('span');
+        scoreEl.className   = 'score';
         scoreEl.textContent = score;
 
-        const titleEl = document.createElement('h3');
+        const titleEl       = document.createElement('h3');
         titleEl.textContent = title;
 
         info.appendChild(scoreEl);
@@ -115,14 +120,14 @@ function render(animes, containerId) {
         div.appendChild(img);
         div.appendChild(info);
 
-        // Clique e teclado
         const animeData = {
             title:    title,
             synopsis: anime.synopsis || 'Sinopse não disponível.',
-            trailer:  anime.trailer?.embed_url || null
+            trailer:  anime.trailer?.embed_url || null,
+            category: categoryLabel
         };
 
-        div.addEventListener('click', () => openModal(animeData));
+        div.addEventListener('click',   () => openModal(animeData));
         div.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -135,50 +140,37 @@ function render(animes, containerId) {
 }
 
 // ==============================
-// 5. MODAL + HARDWARE
+// 5. MODAL
 // ==============================
 function openModal(anime) {
-    const modal = document.getElementById('trailerModal');
+    const modal     = document.getElementById('trailerModal');
+    const container = document.getElementById('trailerContainer');
 
-    // HARDWARE 1: Vibration API (feedback tátil)
-    if ('vibrate' in navigator) {
-        navigator.vibrate(50);
-    }
-
-    // Atualiza textos com textContent (seguro contra XSS)
     document.getElementById('modalTitle').textContent    = anime.title;
     document.getElementById('modalSynopsis').textContent = anime.synopsis;
 
-    // Monta o trailer
-    const container = document.getElementById('trailerContainer');
     if (anime.trailer) {
-        // Remove parâmetros extras e adiciona autoplay + rel=0
-        const baseUrl  = anime.trailer.split('?')[0];
-        const safeUrl  = `${baseUrl}?autoplay=1&rel=0&modestbranding=1`;
-        const iframe   = document.createElement('iframe');
-        iframe.src     = safeUrl;
-        iframe.title   = `Trailer de ${anime.title}`;
-        iframe.allow   = 'autoplay; encrypted-media; fullscreen';
+        const baseUrl          = anime.trailer.split('?')[0];
+        const safeUrl          = `${baseUrl}?autoplay=1&rel=0&modestbranding=1`;
+        const iframe           = document.createElement('iframe');
+        iframe.src             = safeUrl;
+        iframe.title           = `Trailer de ${anime.title}`;
+        iframe.allow           = 'autoplay; encrypted-media; fullscreen';
         iframe.allowFullscreen = true;
-        iframe.loading = 'lazy';
-        container.innerHTML = '';
+        iframe.loading         = 'lazy';
+        container.innerHTML    = '';
         container.appendChild(iframe);
-
-        // HARDWARE 2: Screen Wake Lock (impede tela apagar durante trailer)
         requestWakeLock();
-
     } else {
         container.innerHTML = '';
-        const noTrailer = document.createElement('div');
+        const noTrailer     = document.createElement('div');
         noTrailer.className = 'no-trailer';
         noTrailer.innerHTML = '<span>📺</span><p>Trailer indisponível para este título.</p>';
         container.appendChild(noTrailer);
     }
 
-    modal.style.display = 'block';
-    document.body.style.overflow = 'hidden'; // Trava scroll do fundo
-
-    // Move foco para o modal (acessibilidade)
+    modal.style.display          = 'block';
+    document.body.style.overflow = 'hidden';
     document.querySelector('.close-modal').focus();
 }
 
@@ -186,32 +178,26 @@ function openModal(anime) {
 // 6. FECHAR MODAL
 // ==============================
 function closeModal() {
-    const modal = document.getElementById('trailerModal');
-    modal.style.display = 'none';
+    document.getElementById('trailerModal').style.display = 'none';
     document.getElementById('trailerContainer').innerHTML = '';
     document.body.style.overflow = '';
-
-    // Libera Wake Lock
     releaseWakeLock();
 }
 
-// Handler do botão X
 document.querySelector('.close-modal').addEventListener('click', closeModal);
 
-// Fecha clicando no fundo
 window.addEventListener('click', (e) => {
-    const modal = document.getElementById('trailerModal');
-    if (e.target === modal) closeModal();
+    if (e.target === document.getElementById('trailerModal')) closeModal();
 });
 
-// Fecha com ESC (acessibilidade)
 window.addEventListener('keydown', (e) => {
-    const modal = document.getElementById('trailerModal');
-    if (e.key === 'Escape' && modal.style.display === 'block') closeModal();
+    if (e.key === 'Escape' && document.getElementById('trailerModal').style.display === 'block') {
+        closeModal();
+    }
 });
 
 // ==============================
-// 7. WAKE LOCK API
+// 7. WAKE LOCK
 // ==============================
 async function requestWakeLock() {
     if (!('wakeLock' in navigator)) return;
@@ -224,47 +210,148 @@ async function requestWakeLock() {
 }
 
 async function releaseWakeLock() {
-    if (wakeLock) {
-        await wakeLock.release();
-        wakeLock = null;
-    }
+    if (wakeLock) { await wakeLock.release(); wakeLock = null; }
 }
 
-// Re-adquire wake lock quando a aba voltar ao foco
 document.addEventListener('visibilitychange', () => {
     const modal = document.getElementById('trailerModal');
-    if (wakeLock === null && document.visibilityState === 'visible' && modal.style.display === 'block') {
+    if (!wakeLock && document.visibilityState === 'visible' && modal.style.display === 'block') {
         requestWakeLock();
     }
 });
 
 // ==============================
-// 8. SCROLL HORIZONTAL (SETAS)
+// 8. SCROLL HORIZONTAL
 // ==============================
 function sideScroll(elementId, direction) {
     const el = document.getElementById(elementId);
     if (!el) return;
-    const amount = direction === 'left' ? -320 : 320;
-    el.scrollBy({ left: amount, behavior: 'smooth' });
+    el.scrollBy({ left: direction === 'left' ? -320 : 320, behavior: 'smooth' });
 }
 
 // ==============================
-// 9. PWA - PROMPT DE INSTALAÇÃO
+// 9. 🔔 NOTIFICAÇÕES (Hardware)
+// ==============================
+function setupNotificationButton() {
+    const btn = document.getElementById('notifyBtn');
+    if (!btn) return;
+
+    updateNotifyButton(btn);
+
+    btn.addEventListener('click', async () => {
+        if (!('Notification' in window)) {
+            alert('Seu navegador não suporta notificações.');
+            return;
+        }
+
+        // Se já tem permissão → dispara demo imediata
+        if (Notification.permission === 'granted') {
+            showDemoNotification();
+            return;
+        }
+
+        if (Notification.permission === 'denied') {
+            alert('Notificações bloqueadas. Habilite nas configurações do seu navegador/celular.');
+            return;
+        }
+
+        // Pede permissão ao usuário
+        const permission = await Notification.requestPermission();
+        updateNotifyButton(btn);
+
+        if (permission === 'granted') {
+            notifyIfPermitted(
+                '🎌 AnimeFlux ativado!',
+                'Você receberá alertas sobre animes em destaque.'
+            );
+            startPeriodicNotifications();
+        }
+    });
+
+    // Se já tinha permissão de uma sessão anterior, retoma as periódicas
+    if (Notification.permission === 'granted') {
+        startPeriodicNotifications();
+    }
+}
+
+function updateNotifyButton(btn) {
+    if (!btn) return;
+    if (Notification.permission === 'granted') {
+        btn.textContent = '🔔 Notificações ativas';
+        btn.classList.add('notify-active');
+        btn.classList.remove('notify-blocked');
+    } else if (Notification.permission === 'denied') {
+        btn.textContent = '🔕 Bloqueadas';
+        btn.classList.add('notify-blocked');
+        btn.classList.remove('notify-active');
+    } else {
+        btn.textContent = '🔔 Ativar alertas';
+    }
+}
+
+// Envia a notificação via Service Worker (funciona em background no mobile)
+async function notifyIfPermitted(title, body) {
+    if (Notification.permission !== 'granted') return;
+
+    const icon = '/public/icons/android/mipmap-xxxhdpi/ic_launcher.png';
+
+    try {
+        if ('serviceWorker' in navigator) {
+            const reg = await navigator.serviceWorker.ready;
+            await reg.showNotification(title, {
+                body,
+                icon,
+                badge:   '/public/icons/android/mipmap-mdpi/ic_launcher.png',
+                vibrate: [100, 50, 100],
+                tag:     'animeflux-alert',
+                renotify: true,
+                data:    { url: '/' }
+            });
+        } else {
+            new Notification(title, { body, icon });
+        }
+    } catch (err) {
+        console.warn('Erro ao enviar notificação:', err);
+    }
+}
+
+// Demonstração imediata (botão clicado com permissão já ativa)
+function showDemoNotification() {
+    const random = notificationAnimes[Math.floor(Math.random() * notificationAnimes.length)];
+    notifyIfPermitted(
+        `${random.emoji} Destaque AnimeFlux`,
+        `"${random.title}" está entre os mais assistidos agora!`
+    );
+}
+
+// Notificações periódicas a cada 2 minutos (demo)
+function startPeriodicNotifications() {
+    if (notificationTimer) return;
+    notificationTimer = setInterval(() => {
+        if (Notification.permission !== 'granted') {
+            clearInterval(notificationTimer);
+            return;
+        }
+        const random = notificationAnimes[Math.floor(Math.random() * notificationAnimes.length)];
+        notifyIfPermitted(
+            `${random.emoji} Em alta agora`,
+            `"${random.title}" está bombando no AnimeFlux!`
+        );
+    }, 2 * 60 * 1000);
+}
+
+// ==============================
+// 10. PWA - INSTALL PROMPT
 // ==============================
 function setupInstallPrompt() {
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredInstallPrompt = e;
-
         const toast   = document.getElementById('installToast');
         const btn     = document.getElementById('installBtn');
         const dismiss = document.querySelector('.toast-dismiss');
-
         if (!toast) return;
-
-        // Mostra toast após 3s
-        setTimeout(() => { toast.hidden = false; }, 3000);
-
+        setTimeout(() => { toast.hidden = false; }, 4000);
         btn.addEventListener('click', async () => {
             toast.hidden = true;
             if (!deferredInstallPrompt) return;
@@ -273,12 +360,10 @@ function setupInstallPrompt() {
             console.log(`Instalação: ${outcome}`);
             deferredInstallPrompt = null;
         });
-
         dismiss.addEventListener('click', () => { toast.hidden = true; });
     });
 
     window.addEventListener('appinstalled', () => {
-        console.log('✅ AnimeFlux instalado!');
         deferredInstallPrompt = null;
         const toast = document.getElementById('installToast');
         if (toast) toast.hidden = true;
