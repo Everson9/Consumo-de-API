@@ -1,12 +1,16 @@
 {
   "name": "AnimeFlux Explorer",
   "short_name": "AnimeFlux",
-  "description": "Explore os melhores animes e assista seus trailers.",
-  "start_url": "./index.html",
+  "description": "Explore os melhores animes por categoria e assista trailers gratuitamente.",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0b0f1a",
-  "theme_color": "#38bdf8",
-  "orientation": "portrait",
+  "theme_color": "#0b0f1a",
+  "orientation": "portrait-primary",
+  "lang": "pt-BR",
+  "categories": ["entertainment"],
+  "screenshots": [],
   "icons": [
     {
       "src": "public/icons/android/mipmap-mdpi/ic_launcher.png",
@@ -32,7 +36,7 @@
       "src": "public/icons/android/mipmap-xxxhdpi/ic_launcher.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "public/icons/playstore.png",

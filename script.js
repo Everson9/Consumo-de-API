@@ -1,106 +1,286 @@
-// Configuração das categorias (IDs das fileiras e IDs dos gêneros na Jikan API)
+// ==============================
+// CONFIGURAÇÃO
+// ==============================
 const categories = [
     { genres: '1,27', id: 'shounenRow' },
     { genres: '22,23', id: 'romanceRow' },
-    { genres: '10', id: 'fantasyRow' }
+    { genres: '10',   id: 'fantasyRow'  }
 ];
 
-// 1. Inicialização ao carregar a página
+// Wake Lock (mantém tela ligada durante trailer)
+let wakeLock = null;
+
+// Prompt de instalação PWA
+let deferredInstallPrompt = null;
+
+// ==============================
+// 1. INICIALIZAÇÃO
+// ==============================
+window.addEventListener('load', () => {
+    init();
+    setupInstallPrompt();
+});
+
 async function init() {
     for (const cat of categories) {
+        // Mostra skeletons enquanto carrega
+        renderSkeletons(cat.id);
+
         try {
-            // Busca animes por gênero, ordenados por nota
-            const res = await fetch(`https://api.jikan.moe/v4/anime?genres=${cat.genres}&limit=12&order_by=score&sort=desc`);
+            const res = await fetch(
+                `https://api.jikan.moe/v4/anime?genres=${cat.genres}&limit=12&order_by=score&sort=desc`
+            );
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
             const data = await res.json();
             render(data.data, cat.id);
-            
-            // Delay de 500ms entre as chamadas para não dar erro de "Rate Limit" na API
-            await new Promise(r => setTimeout(r, 500));
+
         } catch (err) {
-            console.error("Erro ao buscar dados da API:", err);
+            console.error(`Erro ao buscar categoria ${cat.id}:`, err);
+            renderError(cat.id);
         }
+
+        // Rate limit da Jikan API (máx 3 req/s)
+        await new Promise(r => setTimeout(r, 500));
     }
 }
 
-// 2. Renderiza os cards de anime no HTML
+// ==============================
+// 2. SKELETONS (Loading)
+// ==============================
+function renderSkeletons(containerId, count = 8) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = Array(count)
+        .fill('<div class="skeleton" aria-hidden="true"></div>')
+        .join('');
+}
+
+// ==============================
+// 3. ERRO DE CARREGAMENTO
+// ==============================
+function renderError(containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = `
+        <p style="color: #64748b; font-size: 0.85rem; padding: 20px 0; font-style: italic;">
+            Não foi possível carregar. Verifique sua conexão.
+        </p>`;
+}
+
+// ==============================
+// 4. RENDERIZA CARDS
+// ==============================
 function render(animes, containerId) {
     const el = document.getElementById(containerId);
     if (!el) return;
-    el.innerHTML = ''; 
+    el.innerHTML = '';
 
-    animes.forEach(anime => {
+    animes.forEach((anime, i) => {
         const div = document.createElement('div');
         div.className = 'anime-card';
-        
-        // Evento de clique para abrir o modal com os dados do anime
-        div.onclick = () => {
-            openModal({
-                title: anime.title,
-                synopsis: anime.synopsis || 'Sinopse não disponível.',
-                trailer: anime.trailer?.embed_url || null
-            });
+        div.setAttribute('role', 'listitem');
+        div.setAttribute('tabindex', '0');
+        div.setAttribute('aria-label', `Ver trailer de ${anime.title}`);
+        div.style.animationDelay = `${i * 60}ms`;
+
+        const score  = anime.score ? `★ ${anime.score}` : '★ N/A';
+        const imgUrl = anime.images?.jpg?.image_url || '';
+        const title  = anime.title || 'Sem título';
+
+        // Cria os elementos sem innerHTML para evitar XSS
+        const img = document.createElement('img');
+        img.src     = imgUrl;
+        img.alt     = title;
+        img.loading = 'lazy';
+        img.width   = 195;
+        img.height  = 280;
+        img.onerror = () => {
+            img.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="195" height="280" fill="%231e293b"><rect width="195" height="280"/><text x="50%" y="50%" fill="%2364748b" text-anchor="middle" font-size="12" dy=".3em">Sem imagem</text></svg>';
         };
 
-        div.innerHTML = `
-            <img src="${anime.images.jpg.image_url}" alt="${anime.title}" loading="lazy">
-            <div class="anime-info">
-                <span class="score">★ ${anime.score || 'N/A'}</span>
-                <h3>${anime.title}</h3>
-            </div>
-        `;
+        const info = document.createElement('div');
+        info.className = 'anime-info';
+
+        const scoreEl = document.createElement('span');
+        scoreEl.className = 'score';
+        scoreEl.textContent = score;
+
+        const titleEl = document.createElement('h3');
+        titleEl.textContent = title;
+
+        info.appendChild(scoreEl);
+        info.appendChild(titleEl);
+        div.appendChild(img);
+        div.appendChild(info);
+
+        // Clique e teclado
+        const animeData = {
+            title:    title,
+            synopsis: anime.synopsis || 'Sinopse não disponível.',
+            trailer:  anime.trailer?.embed_url || null
+        };
+
+        div.addEventListener('click', () => openModal(animeData));
+        div.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openModal(animeData);
+            }
+        });
+
         el.appendChild(div);
     });
 }
 
-// 3. Função do Modal com Recurso de Hardware (Vibration API)
+// ==============================
+// 5. MODAL + HARDWARE
+// ==============================
 function openModal(anime) {
     const modal = document.getElementById('trailerModal');
-    
-    // STRIKE: Uso de recurso de hardware (Vibração)
-    if ("vibrate" in navigator) {
-        navigator.vibrate(50); // Vibra por 50ms ao clicar
+
+    // HARDWARE 1: Vibration API (feedback tátil)
+    if ('vibrate' in navigator) {
+        navigator.vibrate(50);
     }
 
-    document.getElementById('modalTitle').innerText = anime.title;
-    document.getElementById('modalSynopsis').innerText = anime.synopsis;
-    
+    // Atualiza textos com textContent (seguro contra XSS)
+    document.getElementById('modalTitle').textContent    = anime.title;
+    document.getElementById('modalSynopsis').textContent = anime.synopsis;
+
+    // Monta o trailer
     const container = document.getElementById('trailerContainer');
     if (anime.trailer) {
-        // Adiciona o trailer do YouTube se disponível
-        container.innerHTML = `<iframe src="${anime.trailer}" allowfullscreen></iframe>`;
+        // Remove parâmetros extras e adiciona autoplay + rel=0
+        const baseUrl  = anime.trailer.split('?')[0];
+        const safeUrl  = `${baseUrl}?autoplay=1&rel=0&modestbranding=1`;
+        const iframe   = document.createElement('iframe');
+        iframe.src     = safeUrl;
+        iframe.title   = `Trailer de ${anime.title}`;
+        iframe.allow   = 'autoplay; encrypted-media; fullscreen';
+        iframe.allowFullscreen = true;
+        iframe.loading = 'lazy';
+        container.innerHTML = '';
+        container.appendChild(iframe);
+
+        // HARDWARE 2: Screen Wake Lock (impede tela apagar durante trailer)
+        requestWakeLock();
+
     } else {
-        container.innerHTML = `<div class="no-trailer"><p>Trailer indisponível para este título.</p></div>`;
+        container.innerHTML = '';
+        const noTrailer = document.createElement('div');
+        noTrailer.className = 'no-trailer';
+        noTrailer.innerHTML = '<span>📺</span><p>Trailer indisponível para este título.</p>';
+        container.appendChild(noTrailer);
     }
-    
+
     modal.style.display = 'block';
+    document.body.style.overflow = 'hidden'; // Trava scroll do fundo
+
+    // Move foco para o modal (acessibilidade)
+    document.querySelector('.close-modal').focus();
 }
 
-// 4. Fechar o Modal
-document.querySelector('.close-modal').onclick = function() {
+// ==============================
+// 6. FECHAR MODAL
+// ==============================
+function closeModal() {
     const modal = document.getElementById('trailerModal');
     modal.style.display = 'none';
-    document.getElementById('trailerContainer').innerHTML = ''; // Para o vídeo ao fechar
-};
+    document.getElementById('trailerContainer').innerHTML = '';
+    document.body.style.overflow = '';
 
-// Fecha se clicar fora da caixa branca
-window.onclick = function(event) {
+    // Libera Wake Lock
+    releaseWakeLock();
+}
+
+// Handler do botão X
+document.querySelector('.close-modal').addEventListener('click', closeModal);
+
+// Fecha clicando no fundo
+window.addEventListener('click', (e) => {
     const modal = document.getElementById('trailerModal');
-    if (event.target == modal) {
-        modal.style.display = 'none';
-        document.getElementById('trailerContainer').innerHTML = '';
-    }
-};
+    if (e.target === modal) closeModal();
+});
 
-// 5. Função das setas de navegação (Scroll Horizontal)
-function sideScroll(elementId, direction) {
-    const el = document.getElementById(elementId);
-    const scrollAmount = 300;
-    if (direction === 'left') {
-        el.scrollLeft -= scrollAmount;
-    } else {
-        el.scrollLeft += scrollAmount;
+// Fecha com ESC (acessibilidade)
+window.addEventListener('keydown', (e) => {
+    const modal = document.getElementById('trailerModal');
+    if (e.key === 'Escape' && modal.style.display === 'block') closeModal();
+});
+
+// ==============================
+// 7. WAKE LOCK API
+// ==============================
+async function requestWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch (err) {
+        console.log('Wake Lock indisponível:', err.message);
     }
 }
 
-// Inicia o projeto
-window.onload = init;
+async function releaseWakeLock() {
+    if (wakeLock) {
+        await wakeLock.release();
+        wakeLock = null;
+    }
+}
+
+// Re-adquire wake lock quando a aba voltar ao foco
+document.addEventListener('visibilitychange', () => {
+    const modal = document.getElementById('trailerModal');
+    if (wakeLock === null && document.visibilityState === 'visible' && modal.style.display === 'block') {
+        requestWakeLock();
+    }
+});
+
+// ==============================
+// 8. SCROLL HORIZONTAL (SETAS)
+// ==============================
+function sideScroll(elementId, direction) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const amount = direction === 'left' ? -320 : 320;
+    el.scrollBy({ left: amount, behavior: 'smooth' });
+}
+
+// ==============================
+// 9. PWA - PROMPT DE INSTALAÇÃO
+// ==============================
+function setupInstallPrompt() {
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+
+        const toast   = document.getElementById('installToast');
+        const btn     = document.getElementById('installBtn');
+        const dismiss = document.querySelector('.toast-dismiss');
+
+        if (!toast) return;
+
+        // Mostra toast após 3s
+        setTimeout(() => { toast.hidden = false; }, 3000);
+
+        btn.addEventListener('click', async () => {
+            toast.hidden = true;
+            if (!deferredInstallPrompt) return;
+            deferredInstallPrompt.prompt();
+            const { outcome } = await deferredInstallPrompt.userChoice;
+            console.log(`Instalação: ${outcome}`);
+            deferredInstallPrompt = null;
+        });
+
+        dismiss.addEventListener('click', () => { toast.hidden = true; });
+    });
+
+    window.addEventListener('appinstalled', () => {
+        console.log('✅ AnimeFlux instalado!');
+        deferredInstallPrompt = null;
+        const toast = document.getElementById('installToast');
+        if (toast) toast.hidden = true;
+    });
+}

@@ -2,53 +2,79 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Explore os melhores animes por categoria e assista trailers gratuitamente.">
+    <meta name="theme-color" content="#0b0f1a">
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Ícone -->
+    <link rel="icon" href="public/icons/android/mipmap-xxxhdpi/ic_launcher.png" type="image/png">
+    <link rel="apple-touch-icon" href="public/icons/android/mipmap-xxxhdpi/ic_launcher.png">
+
+    <!-- Open Graph (melhora Lighthouse SEO) -->
+    <meta property="og:title" content="AnimeFlux | Explorer & Trailers">
+    <meta property="og:description" content="Explore os melhores animes e assista trailers.">
+    <meta property="og:type" content="website">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+
     <title>AnimeFlux | Explorer & Trailers</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="public/icons/image.ico.png" type="image/png">
-    <meta name="theme-color" content="#0b0f1a">
 </head>
 <body>
+
+    <!-- ===== HEADER ===== -->
     <header>
-        <h1>Anime<span>Flux</span></h1>
-        <p>Explore categorias e assista trailers</p>
+        <div class="header-inner">
+            <div class="logo">
+                <span class="logo-icon" aria-hidden="true">▶</span>
+                <h1>Anime<span>Flux</span></h1>
+            </div>
+            <p class="tagline">Explore categorias &amp; assista trailers</p>
+        </div>
     </header>
 
-    <main>
-        <section class="category">
-            <h2>Shounen & Aventura</h2>
+    <!-- ===== CONTEÚDO PRINCIPAL ===== -->
+    <main id="main-content">
+
+        <section class="category" aria-label="Shounen e Aventura">
+            <h2><span class="cat-icon">⚔️</span> Shounen &amp; Aventura</h2>
             <div class="row-container">
-                <button class="nav-btn left" onclick="sideScroll('shounenRow', 'left')">&#10094;</button>
-                <div class="row" id="shounenRow">
-                    <p class="loading">Carregando animes...</p>
-                </div>
-                <button class="nav-btn right" onclick="sideScroll('shounenRow', 'right')">&#10095;</button>
+                <button class="nav-btn left" aria-label="Rolar para esquerda" onclick="sideScroll('shounenRow', 'left')">&#10094;</button>
+                <div class="row" id="shounenRow" role="list" aria-label="Lista de animes Shounen"></div>
+                <button class="nav-btn right" aria-label="Rolar para direita" onclick="sideScroll('shounenRow', 'right')">&#10095;</button>
             </div>
         </section>
 
-        <section class="category">
-            <h2>Romance & Escolar</h2>
+        <section class="category" aria-label="Romance e Escolar">
+            <h2><span class="cat-icon">💕</span> Romance &amp; Escolar</h2>
             <div class="row-container">
-                <button class="nav-btn left" onclick="sideScroll('romanceRow', 'left')">&#10094;</button>
-                <div class="row" id="romanceRow"></div>
-                <button class="nav-btn right" onclick="sideScroll('romanceRow', 'right')">&#10095;</button>
+                <button class="nav-btn left" aria-label="Rolar para esquerda" onclick="sideScroll('romanceRow', 'left')">&#10094;</button>
+                <div class="row" id="romanceRow" role="list" aria-label="Lista de animes Romance"></div>
+                <button class="nav-btn right" aria-label="Rolar para direita" onclick="sideScroll('romanceRow', 'right')">&#10095;</button>
             </div>
         </section>
 
-        <section class="category">
-            <h2>Fantasia & Isekai</h2>
+        <section class="category" aria-label="Fantasia e Isekai">
+            <h2><span class="cat-icon">🌀</span> Fantasia &amp; Isekai</h2>
             <div class="row-container">
-                <button class="nav-btn left" onclick="sideScroll('fantasyRow', 'left')">&#10094;</button>
-                <div class="row" id="fantasyRow"></div>
-                <button class="nav-btn right" onclick="sideScroll('fantasyRow', 'right')">&#10095;</button>
+                <button class="nav-btn left" aria-label="Rolar para esquerda" onclick="sideScroll('fantasyRow', 'left')">&#10094;</button>
+                <div class="row" id="fantasyRow" role="list" aria-label="Lista de animes Fantasia"></div>
+                <button class="nav-btn right" aria-label="Rolar para direita" onclick="sideScroll('fantasyRow', 'right')">&#10095;</button>
             </div>
         </section>
+
     </main>
 
-    <div id="trailerModal" class="modal">
+    <!-- ===== MODAL ===== -->
+    <div id="trailerModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-content">
-            <span class="close-modal">&times;</span>
+            <button class="close-modal" aria-label="Fechar modal">&times;</button>
             <div id="trailerContainer"></div>
             <div class="modal-info">
                 <h3 id="modalTitle">Título do Anime</h3>
@@ -57,17 +83,26 @@
         </div>
     </div>
 
+    <!-- ===== TOAST (feedback de instalação PWA) ===== -->
+    <div id="installToast" class="install-toast" aria-live="polite" hidden>
+        <span>📲 Instale o AnimeFlux no seu celular!</span>
+        <button id="installBtn">Instalar</button>
+        <button class="toast-dismiss" aria-label="Fechar">✕</button>
+    </div>
+
     <footer>
-        <p>Atividade Acadêmica &bull; Dados via Jikan API</p>
+        <p>Atividade Acadêmica &bull; Dados via <a href="https://jikan.moe" target="_blank" rel="noopener">Jikan API</a></p>
     </footer>
 
     <script src="script.js"></script>
     <script>
-        // Registro do Service Worker para o PWA
+        // Registro do Service Worker
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(() => console.log("Service Worker registrado!"))
-                .catch(err => console.log("Erro no SW:", err));
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(() => console.log('✅ Service Worker registrado!'))
+                    .catch(err => console.warn('SW Erro:', err));
+            });
         }
     </script>
 </body>
